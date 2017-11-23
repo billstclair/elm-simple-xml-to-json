@@ -1,0 +1,18 @@
+{
+    "version": "1.0.0",
+    "summary": "Simplify Xml.xmlToJson, eliminating attributes.",
+    "repository": "https://github.com/billstclair/elm-simple-xml-to-json.git",
+    "license": "MIT",
+    "source-directories": [
+        "."
+    ],
+    "exposed-modules": [
+      "Xml.SimpleXmlToJson"
+    ],
+    "dependencies": {
+        "eeue56/elm-xml": "2.2.2 <= v < 3.0.0",
+        "elm-lang/core": "5.1.1 <= v < 6.0.0",
+        "elm-lang/html": "2.0.0 <= v < 3.0.0"
+    },
+    "elm-version": "0.18.0 <= v < 0.19.0"
+}
