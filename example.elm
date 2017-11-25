@@ -11,7 +11,9 @@
 
 module Main exposing (..)
 
-import Xml.SimpleXmlToJson exposing ( xmlToJson )
+import Xml.SimpleXmlToJson exposing ( TagSpec, Required(..)
+                                    , xmlToJson, decodeXml
+                                    )
 
 import Xml
 import Xml.Decode as XD
@@ -49,25 +51,16 @@ simpleXml =
   <name>noah</name>
   <age max="100">50</age>
 </person>
-<person>
-  <name>josh</name>
-  <age max="100">57</age>
-</person>
     """
 
+-- Will get more complicated
 complexXml =
     """
-<?xml version="1.0" encoding="UTF-8"?>
 <person>
   <name>irving</name>
   <age max="100">20</age>
   <sex>yes</sex>
   <favoriteColor>blue</favoriteColor>
-</person>
-<person>
-  <name>amy</name>
-  <age max="100">22</age>
-  <sex/>
 </person>
     """
 
@@ -84,20 +77,17 @@ type alias Person =
     , age : Int
     }
 
-personObjectDecoder : JD.Decoder Person
-personObjectDecoder =
-    JD.field "person"
-        <| JD.map2 Person
-            (JD.index 0 (JD.field "name" JD.string))
-            (JD.index 1 (JD.field "age" JD.int))
+personDecoder : JD.Decoder Person
+personDecoder =
+    JD.map2 Person
+        (JD.field "name" JD.string)
+        (JD.field "age" JD.int)
 
-personListDecoder : JD.Decoder (List (Maybe Person))
-personListDecoder =
-    JD.list (JD.nullable personObjectDecoder)
-
-decodePersonList : String -> Result String (List (Maybe Person))
-decodePersonList json =
-    JD.decodeString personListDecoder json 
+personTagSpecs : List TagSpec
+personTagSpecs =
+    [ ("name", Required)
+    , ("age", Required)
+    ]
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -135,7 +125,8 @@ view model =
         simpleVal = case xval of
                         Ok v -> JE.encode 1 <| xmlToJson v
                         Err msg -> msg
-        decodedSimpleValue = decodePersonList simpleVal
+        -- This simple call will suffice for most of your XML parsing.
+        decodedSimpleValue = decodeXml xml "person" personDecoder personTagSpecs
         decodedString = case decodedSimpleValue of
                             Err msg -> "Error:" ++ msg
                             Ok s -> toString s
@@ -152,15 +143,15 @@ view model =
             , b [ text "XML:" ]
             , pre []
                 [ text xml ]
+            , b [ text "Decoded:" ]
+            , pre []
+                [ text decodedString ]
             , b [ text "Xml.SimpleXmlToJson.xmlToJson:" ]
             , pre []
                 [ text simpleVal ]
             , b [ text "Xml.xmlToJson:" ]
             , pre []
                 [ text val ]
-            , b [ text "Decoded:" ]
-            , pre []
-                [ text decodedString ]
             , b [ text "Parsed XML:" ]
             , pre []
                 [ text xs ]
