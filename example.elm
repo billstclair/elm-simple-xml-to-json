@@ -20,8 +20,10 @@ import Json.Decode as JD
 import Json.Encode as JE
 
 import Html exposing ( Html, Attribute
-                     , div, p, pre, text
+                     , div, p, pre, text, input
                      )
+import Html.Attributes exposing ( type_, checked )
+import Html.Events exposing ( onCheck )
 
 main =
     Html.program
@@ -33,12 +35,14 @@ main =
 
 type alias Model =
     { xml : String
+    , isComplex : Bool
     }
 
 type Msg
     = SetXml String
+    | SetIsComplex Bool
 
-initialXml =
+simpleXml =
     """
 <?xml version="1.0" encoding="UTF-8"?>
 <person>
@@ -51,9 +55,27 @@ initialXml =
 </person>
     """
 
+complexXml =
+    """
+<?xml version="1.0" encoding="UTF-8"?>
+<person>
+  <name>irving</name>
+  <age max="100">20</age>
+  <sex>yes</sex>
+  <favoriteColor>blue</favoriteColor>
+</person>
+<person>
+  <name>amy</name>
+  <age max="100">22</age>
+  <sex/>
+</person>
+    """
+
 init : (Model, Cmd Msg)
 init =
-    ( { xml = initialXml }
+    ( { xml = simpleXml
+      , isComplex = False
+      }
     , Cmd.none
     )
 
@@ -84,6 +106,13 @@ update msg model =
             ( { model | xml = xml }
             , Cmd.none
             )
+        SetIsComplex isComplex ->
+            ( { model
+                  | isComplex = isComplex
+                  , xml = if isComplex then complexXml else simpleXml
+              }
+            , Cmd.none
+            )
 
 b : List (Html msg) -> Html msg
 b body =
@@ -97,6 +126,9 @@ view : Model -> Html Msg
 view model =
     let xml = model.xml
         xval = XD.decode xml
+        xs = case xval of
+                 Ok v -> toString v
+                 Err msg -> msg
         val = case xval of
                   Ok v -> JE.encode 1 <| Xml.xmlToJson v
                   Err msg -> msg
@@ -109,7 +141,15 @@ view model =
                             Ok s -> toString s
     in
         div []
-            [ b [ text "XML:" ]
+            [ p []
+                  [ input [ type_ "checkbox"
+                          , checked model.isComplex
+                          , onCheck SetIsComplex
+                          ]
+                        []
+                  , text " complex"
+                  ]
+            , b [ text "XML:" ]
             , pre []
                 [ text xml ]
             , b [ text "Xml.SimpleXmlToJson.xmlToJson:" ]
@@ -121,4 +161,7 @@ view model =
             , b [ text "Decoded:" ]
             , pre []
                 [ text decodedString ]
+            , b [ text "Parsed XML:" ]
+            , pre []
+                [ text xs ]
             ]
