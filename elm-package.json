@@ -1,6 +1,6 @@
 {
-    "version": "1.1.0",
-    "summary": "Simplify Xml.xmlToJson, eliminating attributes.",
+    "version": "1.1.1",
+    "summary": "Obsolete. Renamed to billstclair/elm-xml-extra.",
     "repository": "https://github.com/billstclair/elm-simple-xml-to-json.git",
     "license": "MIT",
     "source-directories": [
