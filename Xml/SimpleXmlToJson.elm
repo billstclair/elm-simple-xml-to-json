@@ -11,7 +11,7 @@
 
 module Xml.SimpleXmlToJson exposing ( TagSpec, Required(..)
                                     , decodeXml, stringToJson, xmlToJson
-                                    , tagDecoder
+                                    , tagDecoder, optionalTag
                                     )
 
 {-|
@@ -24,7 +24,7 @@ Provide a decoder to ease turning that into an Elm record.
 @docs TagSpec, Required
 
 # Decoders
-@docs tagDecoder
+@docs tagDecoder, optionalTag
 
 # Functions
 @docs decodeXml, stringToJson, xmlToJson
@@ -57,6 +57,27 @@ decodeXml xml tag decoder tagSpecs =
                             Err "Xml did not contain a single tag."
                 Err msg ->
                     Err msg                
+
+{-| A decoder for `Optional` XML tags
+-}
+optionalTag : String -> Decoder value -> List TagSpec -> Decoder (Maybe value)
+optionalTag tag decoder tagSpecs =
+    JD.oneOf
+        [ JD.field tag (JD.nullable JD.value)
+        , JD.succeed Nothing
+        ]
+        |> JD.andThen
+            (\v ->
+                 case v of
+                     Nothing ->
+                         JD.succeed Nothing
+                     Just v ->
+                         case JD.decodeValue (tagDecoder decoder tagSpecs) v of
+                             Ok value ->
+                                 JD.succeed <| Just value
+                             Err msg ->
+                                 JD.fail msg
+            )
 
 {-| Decode an XML string into a simplified `Json.Encode.Value`.
 -}

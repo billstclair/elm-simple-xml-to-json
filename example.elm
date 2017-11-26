@@ -13,18 +13,19 @@ module Main exposing (..)
 
 import Xml.SimpleXmlToJson exposing ( TagSpec, Required(..)
                                     , xmlToJson, decodeXml
+                                    , tagDecoder, optionalTag
                                     )
 
 import Xml
 import Xml.Decode as XD
 
-import Json.Decode as JD
+import Json.Decode as JD exposing ( Decoder )
 import Json.Encode as JE
 
 import Html exposing ( Html, Attribute
                      , div, p, pre, text, input
                      )
-import Html.Attributes exposing ( type_, checked )
+import Html.Attributes exposing ( type_, checked, style )
 import Html.Events exposing ( onCheck )
 
 main =
@@ -37,12 +38,15 @@ main =
 
 type alias Model =
     { xml : String
-    , isComplex : Bool
+    , isComplexXml : Bool
+    , isComplexDecoder : Bool
+    , tagSpecs : List TagSpec
     }
 
 type Msg
     = SetXml String
-    | SetIsComplex Bool
+    | SetIsComplexXml Bool
+    | SetIsComplexDecoder Bool
 
 simpleXml =
     """
@@ -57,36 +61,63 @@ simpleXml =
 complexXml =
     """
 <person>
-  <name>irving</name>
-  <age max="100">20</age>
+  <name>Irving</name>
+  <age max="100">30</age>
   <sex>yes</sex>
   <favoriteColor>blue</favoriteColor>
+  <spouse>
+      <name>Joan</name>
+      <age>28</age>
+  </spouse>
+  <child>
+      <name>Bob</name>
+      <age>1</age>
+  </child>
+  <child>
+      <name>Sally</name>
+      <age>3</age>
+  </child>
 </person>
     """
 
 init : (Model, Cmd Msg)
 init =
     ( { xml = simpleXml
-      , isComplex = False
+      , isComplexXml = False
+      , isComplexDecoder = False
+      , tagSpecs = simplePersonTagSpecs
       }
     , Cmd.none
     )
 
-type alias Person =
+type alias PersonRecord =
     { name : String
     , age : Int
+    , spouse : Maybe Person
+    , children : List Person
     }
 
-personDecoder : JD.Decoder Person
+type Person =
+    Person PersonRecord
+
+simplePersonTagSpecs : List TagSpec
+simplePersonTagSpecs =
+    [ ("name", Required)
+    , ("age", Required)
+    ]
+
+personDecoder : Decoder Person
 personDecoder =
-    JD.map2 Person
+    JD.map3 (\x y z -> Person <| PersonRecord x y z [])
         (JD.field "name" JD.string)
         (JD.field "age" JD.int)
+        (optionalTag "spouse" (JD.lazy (\_ -> personDecoder)) personTagSpecs)
 
 personTagSpecs : List TagSpec
 personTagSpecs =
     [ ("name", Required)
     , ("age", Required)
+    , ("spouse", Optional)
     ]
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -96,10 +127,23 @@ update msg model =
             ( { model | xml = xml }
             , Cmd.none
             )
-        SetIsComplex isComplex ->
+        SetIsComplexXml isComplex ->
             ( { model
-                  | isComplex = isComplex
-                  , xml = if isComplex then complexXml else simpleXml
+                  | isComplexXml = isComplex
+                  , xml = if isComplex then
+                              complexXml
+                          else
+                              simpleXml
+              }
+            , Cmd.none
+            )
+        SetIsComplexDecoder isComplex ->
+            ( { model
+                  | isComplexDecoder = isComplex
+                  , tagSpecs = if isComplex then
+                                   personTagSpecs
+                               else
+                                   simplePersonTagSpecs
               }
             , Cmd.none
             )
@@ -126,19 +170,26 @@ view model =
                         Ok v -> JE.encode 1 <| xmlToJson v
                         Err msg -> msg
         -- This simple call will suffice for most of your XML parsing.
-        decodedSimpleValue = decodeXml xml "person" personDecoder personTagSpecs
+        decodedSimpleValue = decodeXml xml "person" personDecoder model.tagSpecs
         decodedString = case decodedSimpleValue of
                             Err msg -> "Error:" ++ msg
                             Ok s -> toString s
     in
-        div []
+        div [ style [("margin-left", "2em")] ]
             [ p []
                   [ input [ type_ "checkbox"
-                          , checked model.isComplex
-                          , onCheck SetIsComplex
+                          , checked model.isComplexXml
+                          , onCheck SetIsComplexXml
                           ]
                         []
-                  , text " complex"
+                  , text "  complex XML"
+                  , br
+                  , input [ type_ "checkbox"
+                          , checked model.isComplexDecoder
+                          , onCheck SetIsComplexDecoder
+                          ]
+                        []
+                  , text " complex Decoder"
                   ]
             , b [ text "XML:" ]
             , pre []
