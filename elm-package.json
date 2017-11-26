@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.1.0",
     "summary": "Simplify Xml.xmlToJson, eliminating attributes.",
     "repository": "https://github.com/billstclair/elm-simple-xml-to-json.git",
     "license": "MIT",
